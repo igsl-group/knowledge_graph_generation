@@ -1,0 +1,3 @@
+absl-py
+gradio
+paddleocr[all]
