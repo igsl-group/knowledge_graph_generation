@@ -72,8 +72,8 @@ def create_interface(configs):
     return []
   def create_graphdb_from_text(text, progress = gr.Progress()):
     neo4j = Neo4jGraph(url = configs.neo4j_host, username = configs.neo4j_user, password = configs.neo4j_password, database = configs.neo4j_db)
-    docs = [Document(page_content = text)]
-    graph = graph_transformer.convert_to_graph_documents([splitted_doc])
+    doc = Document(page_content = text)
+    graph = graph_transformer.convert_to_graph_documents([doc])
     neo4j.add_graph_documents(graph)
     return ''
   with gr.Blocks() as demo:
