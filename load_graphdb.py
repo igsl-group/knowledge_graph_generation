@@ -1,12 +1,13 @@
 #!/usr/bin/python3
 
 from os import walk, mkdir
-from os.path import splitext, join, exists
+from os.path import splitext, join, exists, basename
 from shutil import copyfile, rmtree
 from uuid import uuid4
 from absl import flags, app
 from tqdm import tqdm
 import json
+import gradio as gr
 from neo4j import GraphDatabase
 from gradio_client import Client, handle_file
 from langchain_text_splitters.markdown import MarkdownTextSplitter
@@ -18,21 +19,15 @@ from models import *
 FLAGS = flags.FLAGS
 
 def add_options():
-  flags.DEFINE_string('input_dir', default = None, help = 'path to directory')
+  flags.DEFINE_string('host', default = '0.0.0.0', help = 'service host')
+  flags.DEFINE_integer('port', default = 8081, help = 'service port')
   flags.DEFINE_enum('api', default = 'vllm', enum_values = {'vllm', 'dashscope'}, help = 'which api to use')
   flags.DEFINE_enum('model', default = 'llm', enum_values = {'llm', 'diffbot', 'relik', 'gliner'}, help = 'model type')
   flags.DEFINE_enum('env', default = 'qa', enum_values = {'qa', 'sit', 'uat'}, help = 'environment to use')
   flags.DEFINE_string('shared_dir', default = '/srv/shared', help = 'shared folder')
 
-def main(unused_argv):
-  if FLAGS.env == 'qa':
-    import configs.qa_configs as configs
-  elif FLAGS.env == 'sit':
-    import configs.sit_configs as configs
-  elif FLAGS.env == 'uat':
-    import configs.uat_configs as configs
-  else:
-    raise Exception('unknown environment!')
+def create_interface(configs):
+  # 2) create graph llm
   if FLAGS.model == 'llm':
     if FLAGS.api == 'vllm':
       llm = Qwen3_vllm(configs)
@@ -49,32 +44,58 @@ def main(unused_argv):
     graph_transformer = GlinerGraphTransformer()
   else:
     raise Exception('unknown graph transformer type!')
-  driver = GraphDatabase.driver(neo4j_host, auth = (neo4j_user, neo4j_password))
+  # 3) make sure the graph database exists
+  driver = GraphDatabase.driver(configs.neo4j_host, auth = (configs.neo4j_user, configs.neo4j_password))
   with driver.session() as session:
     db_exists = session.run("show databases").data()
-    if not any(db['name'] == neo4j_db for db in db_exists):
-      session.run(f"create database {neo4j_db}")
+    if not any(db['name'] == configs.neo4j_db for db in db_exists):
+      session.run(f"create database {configs.neo4j_db}")
   driver.close()
-  neo4j = Neo4jGraph(url = neo4j_host, username = neo4j_user, password = neo4j_password, database = neo4j_db)
-  client = Client("http://ocr-service:8081")
-  splitter = MarkdownTextSplitter(chunk_size = 500, chunk_overlap = 50)
-  shareddir = str(uuid4())
-  mkdir(join(FLAGS.shared_dir, shareddir))
-  for root, dirs, files in tqdm(walk(FLAGS.input_dir)):
-    for f in files:
-      stem, ext = splitext(f)
-      if ext.lower() == '.pdf':
-        copyfile(join(root, f), join(FLAGS.shared_dir, shareddir, f))
-        results = client.predict(files = [handle_file(join(FLAGS.shared_dir, shareddir, f))], api_name = "/do_ocr")
-        markdown = results[0]['markdown']
-        docs = [Document(page_content = markdown)]
-      else:
-        continue
-      docs = splitter.split_documents(docs)
-      graph = graph_transformer.convert_to_graph_documents(docs)
-      print(graph)
-      neo4j.add_graph_documents(graph)
-  if exists(shareddir): rmtree(shareddir)
+  # 4) create graph database
+  def create_graphdb(files, progress = gr.Progress()):
+    neo4j = Neo4jGraph(url = configs.neo4j_host, username = configs.neo4j_user, password = configs.neo4j_password, database = configs.neo4j_db)
+    client = Client("http://ocr-service:8081")
+    splitter = MarkdownTextSplitter(chunk_size = 500, chunk_overlap = 50)
+    shareddir = str(uuid4())
+    mkdir(join(FLAGS.shared_dir, shareddir))
+    results = list()
+    for f in progress.tqdm(files):
+      copyfile(f, join(FLAGS.shared_dir, shareddir, basename(f)))
+      outputs = client.predict(files = [handle_file(join(FLAGS.shared_dir, shareddir, basename(f)))], api_name = "/do_ocr")
+      results.append(outputs[0])
+    docs = list()
+    for result in results:
+      markdown = result['markdown']
+      docs.append(Document(page_content = markdown))
+    splitted_docs = splitter.split_documents(docs)
+    graph = graph_transformer.convert_to_graph_documents(splitted_docs)
+    neo4j.add_graph_documents(graph)
+    if exists(shareddir): rmtree(shareddir)
+    return []
+  with gr.Blocks() as demo:
+    with gr.Column():
+      with gr.Row(equal_height = True):
+        files = gr.Files(label = "files to upload", scale = 3)
+        process_btn = gr.Button('process', scale = 1)
+      process_btn.click(create_graphdb, inputs = [files], outputs = [files], concurrency_limit = 64)
+  return demo
+
+def main(unused_argv):
+  # 1) load configs
+  if FLAGS.env == 'qa':
+    import configs.qa_configs as configs
+  elif FLAGS.env == 'sit':
+    import configs.sit_configs as configs
+  elif FLAGS.env == 'uat':
+    import configs.uat_configs as configs
+  else:
+    raise Exception('unknown environment!')
+  demo = create_interface(configs)
+  demo.launch(server_name = FLAGS.host,
+              server_port = FLAGS.port,
+              share = False,
+              show_error = True,
+              max_threads = 64)
 
 if __name__ == "__main__":
   add_options()

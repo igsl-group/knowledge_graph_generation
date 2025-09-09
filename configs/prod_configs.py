@@ -22,6 +22,11 @@ opensearch_faq_index = "faq"
 opensearch_drawing_keyword_index = "prod_drawing_index"
 thinking = False
 
+neo4j_host = "bolt://neo4j:7687"
+neo4j_user = "neo4j"
+neo4j_password = "12345678"
+neo4j_db = "content"
+
 psql_host = "172.16.103.137"
 psql_port = "5000"
 psql_user = "kmsuser"

@@ -31,6 +31,11 @@ dashscope_api_key = 'sk-88f509096c9f45c79f16cad6adbba753'
 huggingface_api_key = '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'
 thinking = False
 
+neo4j_host = "bolt://neo4j:7687"
+neo4j_user = "neo4j"
+neo4j_password = "12345678"
+neo4j_db = "content"
+
 child_chunk_size = 500
 child_overlap_size = 50
 parent_chunk_size = 2000
