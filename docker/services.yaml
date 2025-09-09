@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  
+  ocr-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ppocr
+    volumes:
+      - ../:/app
+      - shared-data:/srv/shared
+    working_dir: /app
+    command: python3 ocr_main.py
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  shared-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/shared
