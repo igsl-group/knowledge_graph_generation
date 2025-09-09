@@ -52,21 +52,22 @@ def create_interface(configs):
       session.run(f"create database {configs.neo4j_db}")
   driver.close()
   # 4) create graph database
-  def create_graphdb(files, progress = gr.Progress()):
+  def create_graphdb(files, ocr_progress = gr.Progress(), triplets_progress = gr.Progress()):
     neo4j = Neo4jGraph(url = configs.neo4j_host, username = configs.neo4j_user, password = configs.neo4j_password, database = configs.neo4j_db)
     client = Client("http://ocr-service:8081")
     splitter = MarkdownTextSplitter(chunk_size = 500, chunk_overlap = 50)
     shareddir = str(uuid4())
     mkdir(join(FLAGS.shared_dir, shareddir))
     results = list()
-    for f in progress.tqdm(files):
+    for f in ocr_progress.tqdm(files, desc = "ocr progress"):
       copyfile(f, join(FLAGS.shared_dir, shareddir, basename(f)))
       outputs = client.predict(files = [handle_file(join(FLAGS.shared_dir, shareddir, basename(f)))], api_name = "/do_ocr")
       results.extend(outputs)
     docs = [Document(page_content = result['markdown']) for result in results]
     splitted_docs = splitter.split_documents(docs)
-    graph = graph_transformer.convert_to_graph_documents(splitted_docs)
-    neo4j.add_graph_documents(graph)
+    for splitted_doc in triplets_progress.tqdm(splitted_docs):
+      graph = graph_transformer.convert_to_graph_documents([splitted_doc])
+      neo4j.add_graph_documents(graph)
     if exists(shareddir): rmtree(shareddir)
     return []
   with gr.Blocks() as demo:
