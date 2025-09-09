@@ -14,6 +14,7 @@ sudo apt install docker.io docker-compose-v2
 
 ```shell
 cd docker
+sudo mkdir /srv/shared
 docker compose -f services.yaml up
 ```
 
