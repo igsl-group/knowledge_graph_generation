@@ -1,0 +1,40 @@
+#!/usr/bin/python3
+
+MAX_CONCURRENT_REQUESTS=32
+
+langsmith_trace = 'false'
+langsmith_api_key = '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'
+
+service_host = "0.0.0.0"
+service_port = 8081
+opensearch_host = [
+  {'host': '172.29.2.138', 'port': 9200},
+  {'host': '172.29.2.139', 'port': 9200},
+  {'host': '172.16.103.107', 'port': 9200}
+]
+opensearch_user = "admin"
+opensearch_password = "admin"
+
+opensearch_fulltext_index = "prod_text_index"
+opensearch_text_semantic_index = "prod_text_semantic_index"
+opensearch_drawing_semantic_index = "prod_drawing_semantic_index"
+opensearch_faq_index = "faq"
+opensearch_drawing_keyword_index = "prod_drawing_index"
+thinking = False
+
+psql_host = "172.16.103.137"
+psql_port = "5000"
+psql_user = "kmsuser"
+psql_db = "kms"
+psql_password = "KMS@2025!"
+
+tgi_host = "http://172.29.2.138:8080"
+vllm_host = "http://172.29.2.138:8000/v1"
+dashscope_api_key = 'sk-88f509096c9f45c79f16cad6adbba753'
+huggingface_api_key = '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'
+
+child_chunk_size = 500
+child_overlap_size = 50
+parent_chunk_size = 2000
+parent_overlap_size = 200
+
