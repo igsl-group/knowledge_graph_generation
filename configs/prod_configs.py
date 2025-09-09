@@ -42,7 +42,7 @@ huggingface_api_key = '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'
 neo4j_host = "bolt://neo4j:7687"
 neo4j_user = "neo4j"
 neo4j_password = "12345678"
-neo4j_db = "content"
+neo4j_db = "neo4j"
 
 child_chunk_size = 500
 child_overlap_size = 50
