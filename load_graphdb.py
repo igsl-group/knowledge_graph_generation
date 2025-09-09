@@ -65,7 +65,7 @@ def create_interface(configs):
       results.extend(outputs)
     docs = [Document(page_content = result['markdown']) for result in results]
     splitted_docs = splitter.split_documents(docs)
-    for splitted_doc in triplets_progress.tqdm(splitted_docs):
+    for splitted_doc in triplets_progress.tqdm(splitted_docs, desc = "triplets extraction progress"):
       graph = graph_transformer.convert_to_graph_documents([splitted_doc])
       neo4j.add_graph_documents(graph)
     if exists(shareddir): rmtree(shareddir)
