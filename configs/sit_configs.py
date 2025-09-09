@@ -27,6 +27,7 @@ psql_password = "KMS@2025!"
 
 tgi_host = "http://172.29.2.137:8080"
 vllm_host = "http://172.29.2.137:8000/v1"
+dashscope_api = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 dashscope_api_key = 'sk-88f509096c9f45c79f16cad6adbba753'
 huggingface_api_key = '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'
 thinking = False
