@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-huggingface_token = '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'
+huggingface_token = ''
 
 tgi_host = "http://192.168.2.236:8104"
 
