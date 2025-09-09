@@ -62,11 +62,8 @@ def create_interface(configs):
     for f in progress.tqdm(files):
       copyfile(f, join(FLAGS.shared_dir, shareddir, basename(f)))
       outputs = client.predict(files = [handle_file(join(FLAGS.shared_dir, shareddir, basename(f)))], api_name = "/do_ocr")
-      results.append(outputs[0])
-    docs = list()
-    for result in results:
-      markdown = result['markdown']
-      docs.append(Document(page_content = markdown))
+      results.extend(outputs)
+    docs = [Document(page_content = result['markdown']) for result in results]
     splitted_docs = splitter.split_documents(docs)
     graph = graph_transformer.convert_to_graph_documents(splitted_docs)
     neo4j.add_graph_documents(graph)
