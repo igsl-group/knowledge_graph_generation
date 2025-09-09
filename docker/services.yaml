@@ -1,6 +1,22 @@
 version: '3'
 
 services:
+  gradio-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ../:/app
+    working_dir: app
+    command: python3 load_graphdb.py
+    ports:
+      - 8081:8081
+    restart: always
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      ocr-service:
+        condition: service_healthy
   neo4j:
     image: neo4j:enterprise-bullseye
     container_name: neo4j-apoc
@@ -13,6 +29,7 @@ services:
       NEO4J_apoc_import_file_use__neo4j__config: "true"
       NEO4JLABS_PLUGINS: '["apoc"]'
       NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+      NEO4J_AUTH: neo4j/12345678
     volumes:
       - ${HOME}/neo4j/data:/data
     privileged: true   # 注意Compose对privileged支持有限，仅部分场景有效
@@ -22,6 +39,12 @@ services:
         limits:
           cpus: '32'
           memory: 128G
+    healthcheck:
+      test: [ "CMD", "cypher-shell", "-u", "neo4j", "-p", "12345678", "RETURN 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 2m
   ocr-service:
     build:
       context: ..
@@ -29,8 +52,6 @@ services:
     volumes:
       - ../:/app
       - shared-data:/srv/shared
-    ports:
-      - 8081:8081
     working_dir: /app
     command: python3 ocr_main.py
     restart: always
@@ -41,6 +62,12 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+    healthcheck:
+      test: [ "CMD", "curl", "--fail", "http://localhost:8081/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
 volumes:
   shared-data:
