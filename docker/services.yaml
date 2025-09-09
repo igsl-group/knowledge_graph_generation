@@ -37,7 +37,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '32'
+          cpus: '8'
           memory: 128G
     healthcheck:
       test: [ "CMD", "cypher-shell", "-u", "neo4j", "-p", "12345678", "RETURN 1" ]
