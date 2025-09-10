@@ -15,6 +15,9 @@ sudo apt install docker.io docker-compose-v2
 ```shell
 cd docker
 sudo mkdir /srv/shared
+mkdir opensearch-data
+sudo chown -R 1000:1000 ./opensearch-data
+sudo chmod -R 770 ./opensearch-data
 docker compose -f services.yaml up
 ```
 
