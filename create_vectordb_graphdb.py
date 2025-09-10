@@ -43,7 +43,7 @@ def main(unused_argv):
   Session = sessionmaker(bind = engine)
   session = Session()
   KmsNodeVer = Base.classes.KMS_NODE_VER
-  sql = f"""select "VER_ID", "NODE_ID", "VER_NUM", "OPENSEARCH_ID", "CATG_ID", "NAME", "TITLE", "LANG", "SOURCE_PATH", "NODE_PATH", "NODE_DATE", "OCR_PATH", "IS_DEL", "CURR_VER", "KMS_NODE_VER"."CRE_AT" as "CRE_AT", "KMS_NODE_VER"."DATE_LAST_MDF" as "DATE_LAST_MDF" from "KMS_NODE_VER", "KMS_NODE" where "NODE_ID" = "KMS_NODE_ID" and "TYPE" = '{type_name}' and "OCR_DONE" = true and "IS_DEL" = false"""
+  sql = f"""select "VER_ID", "NODE_ID", "VER_NUM", "OPENSEARCH_ID", "CATG_ID", "NAME", "TITLE", "LANG", "SOURCE_PATH", "NODE_PATH", "NODE_DATE", "OCR_PATH", "IS_DEL", "CURR_VER", "KMS_NODE_VER"."CRE_AT" as "CRE_AT", "KMS_NODE_VER"."DATE_LAST_MDF" as "DATE_LAST_MDF" from "KMS_NODE_VER", "KMS_NODE" where "NODE_ID" = "KMS_NODE_ID" and "TYPE" = 'text' and "OCR_DONE" = true and "IS_DEL" = false"""
   results = pd.read_sql_query(sql, engine)
   for idx, row in results.iterrows():
     if '/STR/DOC/Calculation/' in row['SOURCE_PATH']: continue
