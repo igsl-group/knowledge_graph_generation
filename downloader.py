@@ -38,8 +38,9 @@ class Alfresco(BaseDownloader):
     return filename
 
 if __name__ == "__main__":
-  downloader = AWSDownloader()
-  downloader.download('https://terraform-ha-kms-bucket.s3.ap-east-1.amazonaws.com/Web/1011_index.html', 'test.html')
+  import configs.qa_configs as configs
+  downloader = AWSDownloader(configs)
+  downloader.download('s3://terraform-ha-kms-bucket/2b6af8a1-8d1a-4877-be38-44befe1bbd20.json', 'test.json')
   '''
   import json
   with open('test.md', 'r') as f:
