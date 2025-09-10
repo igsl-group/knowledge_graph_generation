@@ -88,8 +88,21 @@ def create_interface(configs):
     if exists(shareddir): rmtree(shareddir)
     return []
   def create_graphdb_from_text(text, progress = gr.Progress()):
+    vectordb = OpenSearchVectorSearch(
+      embedding_function = embedding,
+      opensearch_url = configs.test_opensearch_host,
+      index_name = configs.opensearch_text_semantic_index,
+      engine = 'faiss',
+      http_auth = (configs.test_opensearch_user, self.configs.test_opensearch_password),
+      use_ssl = True,
+      verify_certs = False,
+      bulk_size = 100000000,
+      connection_class = RequestsHttpConnection,
+    )
     neo4j = Neo4jGraph(url = configs.neo4j_host, username = configs.neo4j_user, password = configs.neo4j_password, database = configs.neo4j_db)
-    doc = Document(page_content = text)
+    doc = Document(page_content = text, metadata = {"filename": "text"})
+    result_id_list = vectordb.add_documents([doc], timeout = "120s", vector_field = "vector_field", engine = "faiss", ef_construction = 512, ef_search = 512, m = 16)
+    doc.metadata['opensearch_id'] = result_id_list[0]
     graph = graph_transformer.convert_to_graph_documents([doc])
     neo4j.add_graph_documents(graph)
     return ''
