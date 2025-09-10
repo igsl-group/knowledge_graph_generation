@@ -15,6 +15,12 @@ opensearch_host = [
 opensearch_user = "admin"
 opensearch_password = "admin"
 
+test_opensearch_host = [
+  {"host": "opensearch", 'port': 9200}
+]   
+test_opensearch_user = "admin"
+test_opensearch_password = "G2w$8nRf!qTbZ7kA"
+
 opensearch_fulltext_index = "qa_text_index"
 opensearch_text_semantic_index = "qa_text_semantic_index_james"
 opensearch_drawing_semantic_index = "qa_drawing_semantic_index"
