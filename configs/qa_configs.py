@@ -21,6 +21,10 @@ test_opensearch_host = [
 test_opensearch_user = "admin"
 test_opensearch_password = "G2w$8nRf!qTbZ7kA"
 
+aws_access_key_id = 'AKIAX7JFDN5JE6WXTDYC'
+aws_secret_access_key = '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'
+bucket_name = 'terraform-ha-kms-bucket'
+
 opensearch_fulltext_index = "qa_text_index"
 opensearch_text_semantic_index = "qa_text_semantic_index"
 opensearch_drawing_semantic_index = "qa_drawing_semantic_index"

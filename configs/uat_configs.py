@@ -21,6 +21,11 @@ test_opensearch_host = [
 test_opensearch_user = "admin"
 test_opensearch_password = "G2w$8nRf!qTbZ7kA"
 
+endpoint_url = 'https://uat.eoss.housingauthority.gov.hk:9021'
+aws_access_key_id = 'akms01'
+aws_secret_access_key = 'UdrQWl/ILp5+/ftu6ohCjhm0G4sDJQ4vomGHog+c'
+bucket_name = 'akmsbk01'
+
 opensearch_fulltext_index = "uat_text_index"
 opensearch_text_semantic_index = "uat_text_semantic_index"
 opensearch_drawing_semantic_index = "uat_drawing_semantic_index"
