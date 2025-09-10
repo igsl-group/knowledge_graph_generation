@@ -47,6 +47,18 @@ def create_interface(configs):
     graph_transformer = GlinerGraphTransformer()
   else:
     raise Exception('unknown graph transformer type!')
+  embedding = HuggingFaceEmbeddings(model_name = "Qwen/Qwen3-Embedding-0.6B")
+  vectordb = OpenSearchVectorSearch(
+    embedding_function = embedding,
+    opensearch_url = configs.opensearch_host,
+    index_name = configs.opensearch_text_semantic_index,
+    engine = 'faiss',
+    http_auth = (configs.opensearch_user, config.opensearch_password),
+    use_ssl = True,
+    verify_certs = False,
+    bulk_size = 100000000,
+    connection_class = RequestsHttpConnection,
+  )
   # 3) make sure the graph database exists
   driver = GraphDatabase.driver(configs.neo4j_host, auth = (configs.neo4j_user, configs.neo4j_password))
   with driver.session() as session:
@@ -55,14 +67,25 @@ def create_interface(configs):
       session.run(f"create database {configs.neo4j_db}")
   driver.close()
   # 4) create graph database
+  def add_vectordb_graphdb(markdown, metadata):
+    neo4j = Neo4jGraph(url = configs.neo4j_host, username = configs.neo4j_user, password = configs.neo4j_password, database = configs.neo4j_db)
+    splitter = MarkdownTextSplitter(chunk_size = 800, chunk_overlap = 25)
+    docs = [Document(page_content = markdown, metadata = metadata)]
+    splitted_docs = splitter.split_documents(docs)
+    result_id_list = vectordb.add_documents(splitted_docs, timeout = "120s", vector_field = "vector_field", engine = "faiss", ef_construction = 512, ef_search = 512, m = 16)
+    for opensearch_id, splitted_doc in progress.tqdm(zip(result_id_list, splitted_docs), desc = "add graphdb"):
+      splitted_doc.metadata['opensearch_id'] = opensearch_id
+      graph = graph_transformer.convert_to_graph_documents([splitted_doc])
+      neo4j.add_graph_documents(graph)
+    return '', None
   def create_graphdb_from_files(files, progress = gr.Progress()):
     embedding = HuggingFaceEmbeddings(model_name = "Qwen/Qwen3-Embedding-0.6B")
-    vectordb = OpenSearchVectorSearch(
+    test_vectordb = OpenSearchVectorSearch(
       embedding_function = embedding,
       opensearch_url = configs.test_opensearch_host,
       index_name = configs.opensearch_text_semantic_index,
       engine = 'faiss',
-      http_auth = (configs.test_opensearch_user, self.configs.test_opensearch_password),
+      http_auth = (configs.test_opensearch_user, configs.test_opensearch_password),
       use_ssl = True,
       verify_certs = False,
       bulk_size = 100000000,
@@ -80,7 +103,7 @@ def create_interface(configs):
       results.extend(outputs)
     docs = [Document(page_content = result['markdown'], metadata = {"filename": basename(f)}) for result in results]
     splitted_docs = splitter.split_documents(docs)
-    result_id_list = vectordb.add_documents(splitted_docs, timeout = "120s", vector_field = "vector_field", engine = "faiss", ef_construction = 512, ef_search = 512, m = 16)
+    result_id_list = test_vectordb.add_documents(splitted_docs, timeout = "120s", vector_field = "vector_field", engine = "faiss", ef_construction = 512, ef_search = 512, m = 16)
     for opensearch_id, splitted_doc in progress.tqdm(zip(result_id_list, splitted_docs), desc = "triplets extraction progress"):
       splitted_doc.metadata['opensearch_id'] = opensearch_id
       graph = graph_transformer.convert_to_graph_documents([splitted_doc])
@@ -88,7 +111,7 @@ def create_interface(configs):
     if exists(shareddir): rmtree(shareddir)
     return []
   def create_graphdb_from_text(text, progress = gr.Progress()):
-    vectordb = OpenSearchVectorSearch(
+    test_vectordb = OpenSearchVectorSearch(
       embedding_function = embedding,
       opensearch_url = configs.test_opensearch_host,
       index_name = configs.opensearch_text_semantic_index,
@@ -101,14 +124,20 @@ def create_interface(configs):
     )
     neo4j = Neo4jGraph(url = configs.neo4j_host, username = configs.neo4j_user, password = configs.neo4j_password, database = configs.neo4j_db)
     doc = Document(page_content = text, metadata = {"filename": "text"})
-    result_id_list = vectordb.add_documents([doc], timeout = "120s", vector_field = "vector_field", engine = "faiss", ef_construction = 512, ef_search = 512, m = 16)
+    result_id_list = test_vectordb.add_documents([doc], timeout = "120s", vector_field = "vector_field", engine = "faiss", ef_construction = 512, ef_search = 512, m = 16)
     doc.metadata['opensearch_id'] = result_id_list[0]
     graph = graph_transformer.convert_to_graph_documents([doc])
     neo4j.add_graph_documents(graph)
     return ''
   with gr.Blocks() as demo:
     with gr.Tab("Production"):
-      pass
+      with gr.Column():
+        with gr.Row():
+          ocr_result = gr.Textbox(label = "ocr result")
+        with gr.Row(equal_height = True):
+          metadata = gr.JSON(label = "metadata", scale = 5)
+          add_btn = gr.Button("add to vectordb+graphdb", scale = 1)
+        add_btn.click(add_vectordb_graphdb, inputs = [ocr_result, metadata], outputs = [ocr_result, metadata])
     with gr.Tab("Test"):
       with gr.Column():
         with gr.Row(equal_height = True):
