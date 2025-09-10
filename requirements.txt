@@ -11,3 +11,4 @@ langchain-huggingface
 langchain-experimental
 langchain-community
 opensearch-py
+sentence_transformers
