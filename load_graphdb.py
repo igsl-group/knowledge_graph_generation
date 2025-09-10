@@ -10,9 +10,12 @@ import json
 import gradio as gr
 from neo4j import GraphDatabase
 from gradio_client import Client, handle_file
+from opensearchpy import RequestsHttpConnection
 from langchain_text_splitters.markdown import MarkdownTextSplitter
 from langchain_core.documents import Document
 from langchain_neo4j import Neo4jGraph
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.vectorstores import OpenSearchVectorSearch
 from langchain_experimental.graph_transformers import LLMGraphTransformer, DiffbotGraphTransformer, RelikGraphTransformer, GlinerGraphTransformer
 from models import *
 
@@ -53,9 +56,21 @@ def create_interface(configs):
   driver.close()
   # 4) create graph database
   def create_graphdb_from_files(files, progress = gr.Progress()):
+    embedding = HuggingFaceEmbeddings(model_name = "Qwen/Qwen3-Embedding-0.6B")
+    vectordb = OpenSearchVectorSearch(
+      embedding_function = embedding,
+      opensearch_url = configs.test_opensearch_host,
+      index_name = configs.opensearch_text_semantic_index,
+      engine = 'faiss',
+      http_auth = (configs.test_opensearch_user, self.configs.test_opensearch_password),
+      use_ssl = True,
+      verify_certs = False,
+      bulk_size = 100000000,
+      connection_class = RequestsHttpConnection,
+    )
     neo4j = Neo4jGraph(url = configs.neo4j_host, username = configs.neo4j_user, password = configs.neo4j_password, database = configs.neo4j_db)
     client = Client("http://ocr-service:8081")
-    splitter = MarkdownTextSplitter(chunk_size = 500, chunk_overlap = 50)
+    splitter = MarkdownTextSplitter(chunk_size = 800, chunk_overlap = 25)
     shareddir = str(uuid4())
     mkdir(join(FLAGS.shared_dir, shareddir))
     results = list()
@@ -63,9 +78,11 @@ def create_interface(configs):
       copyfile(f, join(FLAGS.shared_dir, shareddir, basename(f)))
       outputs = client.predict(files = [handle_file(join(FLAGS.shared_dir, shareddir, basename(f)))], api_name = "/do_ocr")
       results.extend(outputs)
-    docs = [Document(page_content = result['markdown']) for result in results]
+    docs = [Document(page_content = result['markdown'], metadata = {"filename": basename(f)}) for result in results]
     splitted_docs = splitter.split_documents(docs)
-    for splitted_doc in progress.tqdm(splitted_docs, desc = "triplets extraction progress"):
+    result_id_list = vectordb.add_documents(splitted_docs, timeout = "120s", vector_field = "vector_field", engine = "faiss", ef_construction = 512, ef_search = 512, m = 16)
+    for opensearch_id, splitted_doc in progress.tqdm(zip(result_id_list, splitted_docs), desc = "triplets extraction progress"):
+      splitted_doc.metadata['opensearch_id'] = opensearch_id
       graph = graph_transformer.convert_to_graph_documents([splitted_doc])
       neo4j.add_graph_documents(graph)
     if exists(shareddir): rmtree(shareddir)
@@ -77,15 +94,18 @@ def create_interface(configs):
     neo4j.add_graph_documents(graph)
     return ''
   with gr.Blocks() as demo:
-    with gr.Column():
-      with gr.Row(equal_height = True):
-        files = gr.Files(label = "files to upload", scale = 3)
-        ocr_triplets_btn = gr.Button('OCR+triplets extraction', scale = 1)
-      ocr_triplets_btn.click(create_graphdb_from_files, inputs = [files], outputs = [files], concurrency_limit = 64)
-      with gr.Row(equal_height = True):
-        text = gr.Textbox(label = "text chunk", scale = 3)
-        triplets_btn = gr.Button('triplets extraction', scale = 1)
-      triplets_btn.click(create_graphdb_from_text, inputs = [text], outputs = [text], concurrency_limit = 64)
+    with gr.Tab("Production"):
+      pass
+    with gr.Tab("Test"):
+      with gr.Column():
+        with gr.Row(equal_height = True):
+          files = gr.Files(label = "files to upload", scale = 3)
+          ocr_triplets_btn = gr.Button('OCR+triplets extraction', scale = 1)
+        ocr_triplets_btn.click(create_graphdb_from_files, inputs = [files], outputs = [files], concurrency_limit = 64)
+        with gr.Row(equal_height = True):
+          text = gr.Textbox(label = "text chunk", scale = 3)
+          triplets_btn = gr.Button('triplets extraction', scale = 1)
+        triplets_btn.click(create_graphdb_from_text, inputs = [text], outputs = [text], concurrency_limit = 64)
   return demo
 
 def main(unused_argv):

@@ -16,6 +16,8 @@ services:
     depends_on:
       neo4j:
         condition: service_healthy
+      opensearch:
+        condition: service_healthy
   neo4j:
     image: neo4j:enterprise-bullseye
     container_name: neo4j-apoc
@@ -44,6 +46,39 @@ services:
       timeout: 10s
       retries: 5
       start_period: 2m
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-single
+    environment:
+      - discovery.type=single-node
+      - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=G2w$8nRf!qTbZ7kA"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - ./opensearch-data:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600
+    healthcheck:
+      test: ["CMD-SHELL", "curl -u admin:G2w$8nRf!qTbZ7kA -k https://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+  opensearch-dashboard:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: opensearch-dashboards
+    ports:
+      - 5601:5601
+    environment:
+      OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
+    depends_on:
+      opensearch:
+        condition: service_healthy
   ocr-service:
     build:
       context: ..
