@@ -22,7 +22,7 @@ test_opensearch_user = "admin"
 test_opensearch_password = "G2w$8nRf!qTbZ7kA"
 
 opensearch_fulltext_index = "qa_text_index"
-opensearch_text_semantic_index = "qa_text_semantic_index_james"
+opensearch_text_semantic_index = "qa_text_semantic_index"
 opensearch_drawing_semantic_index = "qa_drawing_semantic_index"
 opensearch_faq_index = "faq"
 opensearch_drawing_keyword_index = "qa_drawing_index"
