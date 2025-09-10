@@ -53,7 +53,7 @@ def create_interface(configs):
     opensearch_url = configs.opensearch_host,
     index_name = configs.opensearch_text_semantic_index,
     engine = 'faiss',
-    http_auth = (configs.opensearch_user, config.opensearch_password),
+    http_auth = (configs.opensearch_user, configs.opensearch_password),
     use_ssl = True,
     verify_certs = False,
     bulk_size = 100000000,
