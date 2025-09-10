@@ -78,6 +78,8 @@ def create_interface(configs):
       graph = graph_transformer.convert_to_graph_documents([splitted_doc])
       neo4j.add_graph_documents(graph)
     return '', None
+  def echo_json(json_input):
+    return json_input
   def create_graphdb_from_files(files, progress = gr.Progress()):
     embedding = HuggingFaceEmbeddings(model_name = "Qwen/Qwen3-Embedding-0.6B")
     test_vectordb = OpenSearchVectorSearch(
@@ -137,6 +139,7 @@ def create_interface(configs):
         with gr.Row(equal_height = True):
           metadata = gr.JSON(label = "metadata", scale = 5)
           add_btn = gr.Button("add to vectordb+graphdb", scale = 1)
+        metadata.change(fn = echo_json, inputs = [metadata], outputs = [metadata])
         add_btn.click(add_vectordb_graphdb, inputs = [ocr_result, metadata], outputs = [ocr_result, metadata])
     with gr.Tab("Test"):
       with gr.Column():
